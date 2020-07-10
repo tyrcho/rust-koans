@@ -4,36 +4,36 @@
 // https://doc.rust-lang.org/nightly/book/traits.html
 #[test]
 fn implementing_traits() {
-    struct Person {
-        first_name: &'static str,
-        last_name: &'static str,
+  struct Person {
+    first_name: &'static str,
+    last_name: &'static str,
+  }
+
+  // Any type that implements the HasName trait is guaranteed to have a
+  // function called full_name() that returns a String
+  trait HasName {
+    fn full_name(&self) -> String;
+  }
+
+  impl HasName for Person {
+    fn full_name(&self) -> String {
+      format!("{} {}", self.first_name, self.last_name)
     }
+  }
 
-    // Any type that implements the HasName trait is guaranteed to have a
-    // function called full_name() that returns a String
-    trait HasName {
-        fn full_name(&self) -> String;
-    }
+  let person = Person {
+    first_name: "Chris",
+    last_name: "Cerami",
+  };
 
-    impl Person {
-        fn full_name(&self) -> String {
-            format!("{} {}", self.first_name, self.last_name)
-        }
-    }
+  // The assert_full_name function needs to know that its argument can call
+  // full_name(). In order to guarantee this, it is cast to receive any
+  // argument type that has implemented the HasName trait.
+  fn assert_full_name<T: HasName>(person: T) {
+    assert_eq!(person.full_name(), "Chris Cerami");
+  }
 
-    let person = Person {
-        first_name: "Chris",
-        last_name: "Cerami",
-    };
-
-    // The assert_full_name function needs to know that its argument can call
-    // full_name(). In order to guarantee this, it is cast to receive any
-    // argument type that has implemented the HasName trait.
-    fn assert_full_name<T: HasName>(person: T) {
-        assert_eq!(person.full_name(), "Chris Cerami");
-    }
-
-    assert_full_name(person);
+  assert_full_name(person);
 }
 
 // In order to implement a trait, a type must implement ALL of its functions.
@@ -41,124 +41,137 @@ fn implementing_traits() {
 // will be able to respond to those functions.
 #[test]
 fn implementing_traits2() {
-    struct Character {
-        name: &'static str,
-        level: u16,
+  struct Character {
+    name: &'static str,
+    level: u16,
+  }
+
+  trait HasLevel {
+    fn level_up(&mut self) -> u16;
+
+    fn print_level(&self);
+  }
+
+  impl HasLevel for Character {
+    fn level_up(&mut self) -> u16 {
+      self.level += 1;
+      self.level
     }
 
-    trait HasLevel {
-        fn level_up(&mut self) -> u16;
+    fn print_level(&self) {}
+  }
 
-        fn print_level(&self);
-    }
+  let mut durz = Character {
+    name: "Durz",
+    level: 2,
+  };
 
-    impl HasLevel for Character {
-        fn level_up(&mut self) -> u16 {
-            self.level += 1;
-            self.level
-        }
-    }
+  fn test_level_up<T: HasLevel>(character: &mut T) {
+    assert_eq!(character.level_up(), 3);
+  }
 
-    let mut durz = Character {
-        name: "Durz",
-        level: 2,
-    };
-
-    fn test_level_up<T: HasLevel>(character: &mut T) {
-        assert_eq!(character.level_up(), 3);
-    }
-
-    test_level_up(&mut durz);
+  test_level_up(&mut durz);
 }
 
 // Now let's try creating a trait and implementing it for an existing type.
 #[test]
 fn creating_traits() {
-    let num_one: u16 = 3;
-    let num_two: u16 = 4;
+  let num_one: u16 = 3;
+  let num_two: u16 = 4;
 
-    fn asserts<T: IsEvenOrOdd>(x: T, y: T) {
-        assert!(!x.is_even());
-        assert!(y.is_even());
+  trait IsEvenOrOdd {
+    fn is_even(&self) -> bool;
+  }
+
+  impl IsEvenOrOdd for u16 {
+    fn is_even(&self) -> bool {
+      self % 2 == 0
     }
+  }
 
-    asserts(num_one, num_two);
+  fn asserts<T: IsEvenOrOdd>(x: T, y: T) {
+    assert!(!x.is_even());
+    assert!(y.is_even());
+  }
+
+  asserts(num_one, num_two);
 }
 
 // We can also add trait constraints, or "bounds", to structs that we create.
 // Using this pattern, we can use generic types and still ensure type safety.
 #[test]
 fn trait_constraints_on_structs() {
-    struct Language<T> {
-        stable_version: T,
-        latest_version: T,
+  struct Language<T> {
+    stable_version: T,
+    latest_version: T,
+  }
+
+  impl<T: PartialOrd> Language<T> {
+    fn is_stable(&self) -> bool {
+      self.latest_version >= self.stable_version
     }
+  }
 
-    impl<__> Language<T> {
-        fn is_stable(&self) -> bool {
-            self.latest_version >= self.stable_version
-        }
-    }
+  let rust = Language {
+    stable_version: "1.3.0",
+    latest_version: "1.5.0",
+  };
 
-    let rust = Language {
-        stable_version: "1.3.0",
-        latest_version: "1.5.0",
-    };
-
-    assert!(rust.is_stable());
+  assert!(rust.is_stable());
 }
 
 // There is an alternate syntax for placing trait bounds on a function, the
 // where clause. Let's revisit a previous example, this time using 'where'.
 #[test]
 fn where_clause() {
-    let num_one: u16 = 3;
-    let num_two: u16 = 4;
+  let num_one: u16 = 3;
+  let num_two: u16 = 4;
 
-    trait IsEvenOrOdd {
-        fn is_even(&self) -> bool;
+  trait IsEvenOrOdd {
+    fn is_even(&self) -> bool;
+  }
+
+  impl IsEvenOrOdd for u16 {
+    fn is_even(&self) -> bool {
+      self % 2 == 0
     }
+  }
 
-    impl IsEvenOrOdd for u16 {
-        fn is_even(&self) -> bool {
-            self % 2 == 0
-        }
-    }
+  fn asserts<T>(x: T, y: T)
+    where T: IsEvenOrOdd {
+    assert!(!x.is_even());
+    assert!(y.is_even());
+  }
 
-    fn asserts<T>(x: T, y: T) {
-        assert!(!x.is_even());
-        assert!(y.is_even());
-    }
-
-    asserts(num_one, num_two);
+  asserts(num_one, num_two);
 }
 
 // While you can always allow the implementor of a trait to declare its functions,
 // you can also supply default functionality. Let's revisit IsEvenOrOdd.
 #[test]
 fn default_functions() {
-    let num_one: u16 = 3;
-    let num_two: u16 = 4;
+  let num_one: u16 = 3;
+  let num_two: u16 = 4;
 
-    trait IsEvenOrOdd {
-        fn is_even(&self) -> bool;
-        fn is_odd(&self) -> bool {
-            __
-        }
+  trait IsEvenOrOdd {
+    fn is_even(&self) -> bool;
+    fn is_odd(&self) -> bool {
+      !self.is_even()
     }
+  }
 
-    impl IsEvenOrOdd for u16 {
-        fn is_even(&self) -> bool {
-            self % 2 == 0
-        }
+  impl IsEvenOrOdd for u16 {
+    fn is_even(&self) -> bool {
+      self % 2 == 0
     }
+  }
 
-    fn asserts<T: IsEvenOrOdd>(x: T, y: T) {
-        assert!(x.is_odd());
-        assert!(y.is_even());
-    }
+  fn asserts<T: IsEvenOrOdd>(x: T, y: T) {
+    assert!(x.is_odd());
+    assert!(y.is_even());
+  }
 
-    asserts(num_one, num_two);
+  asserts(num_one, num_two);
 }
 
 // You can also create traits that inherit from other traits.
@@ -167,31 +180,32 @@ fn default_functions() {
 // meet the requirements for the Ordered trait.
 #[test]
 fn inheritance() {
-    use std::cmp::Ordering;
+  use std::cmp::Ordering;
+  use std::cmp::PartialOrd;
 
-    #[derive(PartialEq)]
-    struct Bawks<T> {
-        thingy: T
+  #[derive(PartialEq)]
+  struct Bawks<T> {
+    thingy: T
+  }
+
+  impl<T: PartialOrd> PartialOrd for Bawks<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+      self.thingy.partial_cmp(&other.thingy)
     }
+  }
 
-    impl<T: PartialOrd> PartialOrd for Bawks<T> {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            __
-        }
+  trait Ordered: PartialOrd {
+    fn is_before(&self, other: &Self) -> bool;
+  }
+
+  impl<T: PartialOrd> Ordered for Bawks<T> {
+    fn is_before(&self, other: &Self) -> bool {
+      self < other
     }
+  }
 
-    trait Ordered: PartialOrd {
-        fn is_before(&self, other: &Self) -> bool;
-    }
+  let a = Bawks { thingy: 5.0 };
+  let b = Bawks { thingy: 7.0 };
 
-    impl<T: PartialOrd> Ordered for Bawks<T> {
-        fn is_before(&self, other: &Self) -> bool {
-            self < other
-        }
-    }
-
-    let a = Bawks { thingy: 5.0 };
-    let b = Bawks { thingy: 7.0 };
-
-    assert!(a.is_before(&b));
+  assert!(a.is_before(&b));
 }
